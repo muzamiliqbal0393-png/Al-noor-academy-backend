@@ -58,23 +58,23 @@ mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 })
-.then(() => console.log('✅ MongoDB Connected'))
-.catch(err => {
-    console.error('❌ MongoDB Error:', err.message);
-    process.exit(1);
-});
+    .then(() => console.log('✅ MongoDB Connected'))
+    .catch(err => {
+        console.error('❌ MongoDB Error:', err.message);
+        process.exit(1);
+    });
 
 // ===== ROUTES =====
-app.use('/api/auth',          require('./routes/auth'));
-app.use('/api/admin',         require('./routes/admin'));
-app.use('/api/teachers',      require('./routes/teacher'));
-app.use('/api/students',      require('./routes/student'));
-app.use('/api/parents',       require('./routes/parent'));
-app.use('/api/classes',       require('./routes/class'));
-app.use('/api/homework',      require('./routes/homework'));
-app.use('/api/attendance',    require('./routes/attendance'));
-app.use('/api/messages',      require('./routes/message'));
-app.use('/api/payments',      require('./routes/payment'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/teachers', require('./routes/teacher'));
+app.use('/api/students', require('./routes/student'));
+app.use('/api/parents', require('./routes/parent'));
+app.use('/api/classes', require('./routes/class'));
+app.use('/api/homework', require('./routes/homework'));
+app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/messages', require('./routes/message'));
+app.use('/api/payments', require('./routes/payment'));
 app.use('/api/notifications', require('./routes/notification'));
 
 // ===== HEALTH CHECK =====
