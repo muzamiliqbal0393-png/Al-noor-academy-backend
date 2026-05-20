@@ -1,115 +1,82 @@
-const express = require('express');
-const http = require('http');
-const socketIO = require('socket.io');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const compression = require('compression');
-const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+const express = require("express");
+const mongoose = require("mongoose");
+const morgan = require("morgan");
+const cors = require("cors");
 
-const app = express();
-const server = http.createServer(app);
+// Routes
+const cartRoutes = require("./routes/cartRoute");
+const userRoutes = require("./routes/userRoutes");
+const orderRoutes = require("./routes/ordersRoute");
+const authenticationRoute = require("./routes/authenticationRoute");
+const brandRoutes = require("./routes/brandRoute");
+const categoryRoutes = require("./routes/categoryRoute");
+const productRoutes = require("./routes/productRoute");
+const registerRoutes = require("./routes/register");
 
-// ===== SOCKET.IO SETUP =====
-const io = socketIO(server, {
-    cors: {
-        origin: process.env.CLIENT_URL || '*',
-        methods: ['GET', 'POST']
-    }
-});
+// Create express app
+const server = express();
 
-// Make io accessible in routes
-app.set('io', io);
-
-// ===== MIDDLEWARE =====
-app.use(helmet());
-app.use(compression());
-app.use(morgan('dev'));
-app.use(cors({
-    origin: process.env.CLIENT_URL || '*',
-    credentials: true
-}));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Serve static files for profile pictures
-app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
-
-// Rate Limiting
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 min
-    max: 100,
-    message: { success: false, message: 'Too many requests. Please try again later.' }
-});
-app.use('/api/', limiter);
-
-// Auth limiter (strict)
-const authLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hour
-    max: 10,
-    message: { success: false, message: 'Too many login attempts. Try after 1 hour.' }
-});
-app.use('/api/auth/login', authLimiter);
-
-// ===== DATABASE =====
-mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
-    .then(() => console.log('✅ MongoDB Connected'))
-    .catch(err => {
-        console.error('❌ MongoDB Error:', err.message);
-        process.exit(1);
+// ✅ MongoDB Connection
+mongoose
+    .connect(
+        "mongodb+srv://hanzlazahid76:u0ArXokTiBV12Zb0@cluster0.wepaf.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
+        {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        }
+    )
+    .then(() => {
+        console.log("✅ Connected to MongoDB");
+        const PORT = process.env.PORT || 8080;
+        server.listen(PORT, "0.0.0.0", () => {
+            console.log(`🚀 Server running on port ${PORT}`);
+        });
+    })
+    .catch((error) => {
+        console.error("❌ MongoDB connection error:", error);
     });
 
-// ===== ROUTES =====
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/admin', require('./routes/admin'));
-app.use('/api/teachers', require('./routes/teacher'));
-app.use('/api/students', require('./routes/student'));
-app.use('/api/parents', require('./routes/parent'));
-app.use('/api/classes', require('./routes/class'));
-app.use('/api/homework', require('./routes/homework'));
-app.use('/api/attendance', require('./routes/attendance'));
-app.use('/api/messages', require('./routes/message'));
-app.use('/api/payments', require('./routes/payment'));
-app.use('/api/notifications', require('./routes/notification'));
+// ✅ Corrected CORS Configuration (Allows Al-Noor Academy Frontend)
+server.use(
+    cors({
+        origin: "*", // Yeh har origin ko allow karega taake connection ka error na aaye
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+    })
+);
 
-// ===== HEALTH CHECK =====
-app.get('/', (req, res) => {
-    res.json({
-        success: true,
-        message: '🕌 Al-Noor Quran Academy API is running',
-        version: '1.0.0',
-        timestamp: new Date().toISOString()
-    });
+// ✅ Static file serving (uploads)
+server.use("/uploads", cors(), express.static("uploads"));
+
+// ✅ Middleware
+server.use(morgan("dev"));
+server.use(express.json());
+
+// ✅ Routes
+server.use(registerRoutes);
+server.use(authenticationRoute);
+server.use(productRoutes);
+server.use(brandRoutes);
+server.use(userRoutes);
+server.use(categoryRoutes);
+server.use(orderRoutes);
+server.use(cartRoutes);
+
+// ✅ Root Route
+server.get("/", (req, res) => {
+    res.send("✅ API is running successfully!");
 });
 
-// ===== ERROR HANDLER =====
-app.use((err, req, res, next) => {
-    console.error('❌ Server Error:', err.stack);
-    res.status(err.status || 500).json({
-        success: false,
-        message: err.message || 'Internal server error'
-    });
+// ❌ 404 Not Found
+server.use((req, res) => {
+    res.status(404).json({ msg: "❌ Not Found" });
 });
 
-// 404 Handler
-app.use('*', (req, res) => {
-    res.status(404).json({ success: false, message: 'Route not found' });
+// ❌ Global Error Handler
+server.use((err, req, res, next) => {
+    console.error("❌ Server Error:", err.message);
+    res
+        .status(err.status || 500)
+        .json({ msg: err.message || "Internal Server Error" });
 });
-
-// ===== SOCKET.IO LOGIC =====
-require('./config/socket')(io);
-
-// ===== START SERVER =====
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📡 Socket.IO ready`);
-    console.log(`🌐 Environment: ${process.env.NODE_ENV}`);
-});
-
-module.exports = { app, server, io };
