@@ -16,17 +16,14 @@ const registerRoutes = require("./routes/register");
 // Create express app
 const server = express();
 
-// ✅ MongoDB Connection
+// ✅ MongoDB Connection (Updated to use your Environment Variables)
 mongoose
-    .connect(
-        "mongodb+srv://hanzlazahid76:u0ArXokTiBV12Zb0@cluster0.wepaf.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
-        {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        }
-    )
+    .connect(process.env.MONGO_URI || "mongodb+srv://muzamiliqbal0393_db_user:Muzamil2233@cluster0.zerb0gq.mongodb.net/?appName=Cluster0", {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+    })
     .then(() => {
-        console.log("✅ Connected to MongoDB");
+        console.log("✅ Connected to Muzamil's MongoDB");
         const PORT = process.env.PORT || 8080;
         server.listen(PORT, "0.0.0.0", () => {
             console.log(`🚀 Server running on port ${PORT}`);
