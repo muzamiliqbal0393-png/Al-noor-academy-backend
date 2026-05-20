@@ -51,14 +51,14 @@ server.use(morgan("dev"));
 server.use(express.json());
 
 // ✅ Routes
-server.use(registerRoutes);
-server.use(authenticationRoute);
-server.use(productRoutes);
-server.use(brandRoutes);
-server.use(userRoutes);
-server.use(categoryRoutes);
-server.use(orderRoutes);
-server.use(cartRoutes);
+server.use("/api", registerRoutes);
+server.use("/api", authenticationRoute);
+server.use("/api", productRoutes);
+server.use("/api", brandRoutes);
+server.use("/api", userRoutes);
+server.use("/api", categoryRoutes);
+server.use("/api", orderRoutes);
+server.use("/api", cartRoutes);
 
 // ✅ Root Route
 server.get("/", (req, res) => {
