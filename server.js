@@ -2,41 +2,41 @@ const express = require("express");
 const mongoose = require("mongoose");
 const morgan = require("morgan");
 const cors = require("cors");
+require("dotenv").config(); // Essential for Vercel to load env variables
 
-// Routes
-const cartRoutes = require("./routes/cartRoute");
-const userRoutes = require("./routes/userRoutes");
-const orderRoutes = require("./routes/ordersRoute");
-const authenticationRoute = require("./routes/authenticationRoute");
-const brandRoutes = require("./routes/brandRoute");
-const categoryRoutes = require("./routes/categoryRoute");
-const productRoutes = require("./routes/productRoute");
-const registerRoutes = require("./routes/register");
+// Correct Academy Routes
+const authRoutes = require("./routes/auth");
+const teacherRoutes = require("./routes/teacher");
+const studentRoutes = require("./routes/student");
+const parentRoutes = require("./routes/parent");
+const classesRoutes = require("./routes/classes");
+const adminRoutes = require("./routes/admin");
+const attendanceRoutes = require("./routes/attendance");
+const homeworkRoutes = require("./routes/homework");
+const messagesRoutes = require("./routes/messages");
+const paymentsRoutes = require("./routes/payments");
+const notificationsRoutes = require("./routes/notifications");
 
 // Create express app
 const server = express();
 
-// ✅ MongoDB Connection (Updated to use your Environment Variables)
+// ✅ MongoDB Connection
 mongoose
-    .connect(process.env.MONGO_URI || "mongodb+srv://muzamiliqbal0393_db_user:Muzamil2233@cluster0.zerb0gq.mongodb.net/?appName=Cluster0", {
+    .connect(process.env.MONGO_URI || "mongodb+srv://muzamiliqbal0393_db_user:Muzamil2233@cluster0.zerb0gq.mongodb.net/alnoor_academy?appName=Cluster0", {
         useNewUrlParser: true,
         useUnifiedTopology: true,
     })
     .then(() => {
-        console.log("✅ Connected to Muzamil's MongoDB");
-        const PORT = process.env.PORT || 8080;
-        server.listen(PORT, "0.0.0.0", () => {
-            console.log(`🚀 Server running on port ${PORT}`);
-        });
+        console.log("✅ Connected to MongoDB");
     })
     .catch((error) => {
         console.error("❌ MongoDB connection error:", error);
     });
 
-// ✅ Corrected CORS Configuration (Allows Al-Noor Academy Frontend)
+// ✅ CORS Configuration
 server.use(
     cors({
-        origin: "*", // Yeh har origin ko allow karega taake connection ka error na aaye
+        origin: "*", 
         credentials: true,
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allowedHeaders: ["Content-Type", "Authorization"],
@@ -50,19 +50,22 @@ server.use("/uploads", cors(), express.static("uploads"));
 server.use(morgan("dev"));
 server.use(express.json());
 
-// ✅ Routes
-server.use("/api", registerRoutes);
-server.use("/api", authenticationRoute);
-server.use("/api", productRoutes);
-server.use("/api", brandRoutes);
-server.use("/api", userRoutes);
-server.use("/api", categoryRoutes);
-server.use("/api", orderRoutes);
-server.use("/api", cartRoutes);
+// ✅ API Routes (Online Academy)
+server.use("/api/auth", authRoutes);
+server.use("/api/teacher", teacherRoutes);
+server.use("/api/student", studentRoutes);
+server.use("/api/parent", parentRoutes);
+server.use("/api/classes", classesRoutes);
+server.use("/api/admin", adminRoutes);
+server.use("/api/attendance", attendanceRoutes);
+server.use("/api/homework", homeworkRoutes);
+server.use("/api/messages", messagesRoutes);
+server.use("/api/payments", paymentsRoutes);
+server.use("/api/notifications", notificationsRoutes);
 
 // ✅ Root Route
 server.get("/", (req, res) => {
-    res.send("✅ API is running successfully!");
+    res.send("✅ Al-Noor Quran Academy API is running successfully!");
 });
 
 // ❌ 404 Not Found
@@ -77,3 +80,13 @@ server.use((err, req, res, next) => {
         .status(err.status || 500)
         .json({ msg: err.message || "Internal Server Error" });
 });
+
+// Only listen if not on Vercel (Vercel handles listening)
+if (process.env.NODE_ENV !== "production") {
+    const PORT = process.env.PORT || 5000;
+    server.listen(PORT, "0.0.0.0", () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+    });
+}
+
+module.exports = server; // Required for Vercel Serverless Functions
