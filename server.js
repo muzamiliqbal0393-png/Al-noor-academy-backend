@@ -24,28 +24,50 @@ const server = express();
 mongoose.set('strictQuery', true);
 mongoose.set('bufferCommands', false);
 
-// ⚡ FIX: Yahan mongoose.connect call karna zaroori tha
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/al_noor_academy"; 
 
-mongoose
-  .connect(MONGO_URI) // <-- Yeh miss tha aapke code mein
-  .then(() => {
+// ⚡ FIX: Database Connection Cache (Serverless ke liye zaroori hai)
+let isConnected = false;
+
+async function connectDB() {
+  if (isConnected) {
+    return;
+  }
+
+  // Agar pehle se connecting state (2) mein ho toh wait karein
+  if (mongoose.connection.readyState === 1) {
+    isConnected = true;
+    return;
+  }
+
+  try {
+    console.log("🔄 Connecting to MongoDB Atlas...");
+    await mongoose.connect(MONGO_URI);
+    isConnected = true;
     console.log("✅ Connected to MongoDB");
-    // Start server after DB connection (development mode)
-    if (process.env.NODE_ENV !== "production") {
-      const PORT = process.env.PORT || 5000;
-      server.listen(PORT, () => { // <-- Removed "0.0.0.0" for simplicity
-        console.log(`🚀 Server running on port ${PORT}`);
-      });
-    }
-  })
-  .catch((err) => {
+  } catch (err) {
     console.error("❌ MongoDB connection error:", err);
-    // Vercel environment mein crash hone se bachane ke liye handle kiya
-    if (process.env.NODE_ENV !== "production") {
-        process.exit(1);
-    }
+    throw err;
+  }
+}
+
+// ⚡ FIX MIDDLEWARE: Har incoming request par check karein ke DB connected hai ya nahi
+server.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    res.status(500).json({ msg: "Database connection failed", error: error.message });
+  }
+});
+
+// Start server ONLY for Local Development mode
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, () => {
+    console.log(`🚀 Local Server running on port ${PORT}`);
   });
+}
 
 // ✅ CORS Configuration
 server.use(
@@ -89,7 +111,7 @@ server.use((req, res) => {
 
 // ❌ Global Error Handler
 server.use((err, req, res, next) => {
-    console.error("❌ Server Error Detail:", err); // Taake poora error object terminal me dikhe
+    console.error("❌ Server Error Detail:", err); 
     res
         .status(err.status || 500)
         .json({ msg: err.message || "Internal Server Error" });
