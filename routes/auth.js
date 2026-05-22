@@ -63,7 +63,7 @@ const sendValidationErrors = (req, res) => {
 // @desc    Register new user
 // @access  Public
 // ─────────────────────────────────────────────
-router.post('/register', registerValidation, async (req, res) => {
+router.post('/register', upload.single('degree'), registerValidation, async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ success: false, errors: errors.array() });
@@ -83,10 +83,17 @@ router.post('/register', registerValidation, async (req, res) => {
 
         // Create role-specific profile
         if (role === 'teacher') {
+            const degreeUrl = req.file ? `/uploads/avatars/${req.file.filename}` : null;
+            if (!degreeUrl) {
+                 // The user requested degree upload is mandatory
+                 await User.findByIdAndDelete(user._id); // rollback user creation
+                 return res.status(400).json({ success: false, message: 'Degree/Certificate file is required for Teachers' });
+            }
             await Teacher.create({
                 user: user._id,
-                specializations: req.body.specializations || [],
-                experience: req.body.experience || 0
+                specializations: req.body.specializations ? req.body.specializations.split(',') : [],
+                experience: req.body.experience || 0,
+                degreeFile: degreeUrl
             });
         } else if (role === 'student') {
             const student = await Student.create({

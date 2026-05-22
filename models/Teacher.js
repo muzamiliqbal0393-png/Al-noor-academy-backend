@@ -26,6 +26,10 @@ const TeacherSchema = new mongoose.Schema({
         year: Number,
         file: String // URL
     }],
+    degreeFile: {
+        type: String, // URL to the uploaded degree/certificate
+        required: false
+    },
     bio: {
         type: String,
         maxlength: [1000, 'Bio cannot exceed 1000 characters']

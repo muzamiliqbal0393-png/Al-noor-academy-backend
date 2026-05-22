@@ -20,18 +20,32 @@ const notificationsRoutes = require("./routes/notifications");
 // Create express app
 const server = express();
 
-// ✅ MongoDB Connection
+// ✅ MongoDB Connection Settings
+mongoose.set('strictQuery', true);
+mongoose.set('bufferCommands', false);
+
+// ⚡ FIX: Yahan mongoose.connect call karna zaroori tha
+const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/al_noor_academy"; 
+
 mongoose
-    .connect(process.env.MONGO_URI || "mongodb+srv://muzamiliqbal0393_db_user:Muzamil2233@cluster0.zerb0gq.mongodb.net/alnoor_academy?appName=Cluster0", {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-    })
-    .then(() => {
-        console.log("✅ Connected to MongoDB");
-    })
-    .catch((error) => {
-        console.error("❌ MongoDB connection error:", error);
-    });
+  .connect(MONGO_URI) // <-- Yeh miss tha aapke code mein
+  .then(() => {
+    console.log("✅ Connected to MongoDB");
+    // Start server after DB connection (development mode)
+    if (process.env.NODE_ENV !== "production") {
+      const PORT = process.env.PORT || 5000;
+      server.listen(PORT, () => { // <-- Removed "0.0.0.0" for simplicity
+        console.log(`🚀 Server running on port ${PORT}`);
+      });
+    }
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB connection error:", err);
+    // Vercel environment mein crash hone se bachane ke liye handle kiya
+    if (process.env.NODE_ENV !== "production") {
+        process.exit(1);
+    }
+  });
 
 // ✅ CORS Configuration
 server.use(
@@ -75,18 +89,10 @@ server.use((req, res) => {
 
 // ❌ Global Error Handler
 server.use((err, req, res, next) => {
-    console.error("❌ Server Error:", err.message);
+    console.error("❌ Server Error Detail:", err); // Taake poora error object terminal me dikhe
     res
         .status(err.status || 500)
         .json({ msg: err.message || "Internal Server Error" });
 });
-
-// Only listen if not on Vercel (Vercel handles listening)
-if (process.env.NODE_ENV !== "production") {
-    const PORT = process.env.PORT || 5000;
-    server.listen(PORT, "0.0.0.0", () => {
-        console.log(`🚀 Server running on port ${PORT}`);
-    });
-}
 
 module.exports = server; // Required for Vercel Serverless Functions

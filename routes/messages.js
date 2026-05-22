@@ -12,9 +12,11 @@ router.use(protect);
 router.get('/contacts', async (req, res) => {
     try {
         const User = require('../models/User');
-        const teacher = await User.findOne({ email: 'ibrahim@alnoor.com' }).select('_id name email avatar role');
-        const admin = await User.findOne({ email: 'admin@alnoor.com' }).select('_id name email avatar role');
-        res.json({ success: true, data: { teacher, admin } });
+        // Get all users except the current user and only active ones
+        const contacts = await User.find({ _id: { $ne: req.user._id }, isActive: true })
+            .select('_id name email avatar role')
+            .sort({ role: 1, name: 1 });
+        res.json({ success: true, data: contacts });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
