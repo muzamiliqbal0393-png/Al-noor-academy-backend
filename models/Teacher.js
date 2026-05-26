@@ -26,6 +26,19 @@ const TeacherSchema = new mongoose.Schema({
         year: Number,
         file: String // URL
     }],
+    // Qualification text provided by teacher application
+    qualificationText: {
+        type: String,
+        maxlength: [2000, 'Qualification text cannot exceed 2000 characters'],
+        default: ''
+    },
+
+    // Multiple uploaded qualification documents (degree/certificates)
+    qualificationFiles: [{
+        type: String // URL to uploaded file
+    }],
+
+    // Backward compatibility (old single file field)
     degreeFile: {
         type: String, // URL to the uploaded degree/certificate
         required: false
@@ -85,3 +98,4 @@ TeacherSchema.virtual('activeStudentsCount').get(function() {
 });
 
 module.exports = mongoose.model('Teacher', TeacherSchema);
+

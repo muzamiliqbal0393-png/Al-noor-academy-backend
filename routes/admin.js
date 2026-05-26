@@ -152,6 +152,74 @@ router.put('/users/:id/toggle-active', async (req, res) => {
 // @desc    Approve a teacher
 // @access  Admin
 // ─────────────────────────────────────────────
+router.get('/teachers/pending', async (req, res) => {
+    try {
+        const pending = await Teacher.find({ approvedByAdmin: false, isAvailable: false })
+            .populate('user', 'name email phone avatar');
+        res.json({ success: true, count: pending.length, data: pending });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/teachers/:id/verify', async (req, res) => {
+    try {
+        const teacher = await Teacher.findByIdAndUpdate(
+            req.params.id,
+            { approvedByAdmin: true, isAvailable: true },
+            { new: true }
+        ).populate('user', 'name email');
+
+        if (!teacher) {
+            return res.status(404).json({ success: false, message: 'Teacher not found' });
+        }
+
+        await Notification.create({
+            recipient: teacher.user._id,
+            title: '✅ Application Approved!',
+            body: 'Congratulations! Your teacher application has been approved. You can now start teaching. Masha Allah!',
+            type: 'announcement'
+        });
+
+        if (global.sendNotification) {
+            global.sendNotification(teacher.user._id.toString(), {
+                title: '✅ Application Approved!',
+                body: 'Welcome to Al-Noor Academy teaching team! 🕌'
+            });
+        }
+
+        res.json({ success: true, message: 'Teacher verified', data: teacher });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+router.post('/teachers/:id/reject', async (req, res) => {
+    try {
+        const teacher = await Teacher.findByIdAndUpdate(
+            req.params.id,
+            { approvedByAdmin: false, isAvailable: false },
+            { new: true }
+        ).populate('user', 'name email');
+
+        if (!teacher) {
+            return res.status(404).json({ success: false, message: 'Teacher not found' });
+        }
+
+        await Notification.create({
+            recipient: teacher.user._id,
+            title: '❌ Application Not Approved',
+            body: 'Your teacher application is not approved yet. Please check and resubmit documents if needed.',
+            type: 'announcement'
+        });
+
+        res.json({ success: true, message: 'Teacher rejected', data: teacher });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// Backward compatibility old endpoint
 router.post('/approve-teacher/:id', async (req, res) => {
     try {
         const teacher = await Teacher.findByIdAndUpdate(

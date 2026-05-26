@@ -17,6 +17,11 @@ router.use(protect);
 // @access  Teacher
 // ─────────────────────────────────────────────
 router.get('/dashboard', authorize('teacher', 'admin'), async (req, res) => {
+    // Block teacher until admin verification
+    const me = await Teacher.findOne({ user: req.user._id });
+    if (me && me.approvedByAdmin !== true) {
+        return res.status(403).json({ success:false, message:'Teacher verification pending' });
+    }
     try {
         const teacher = await Teacher.findOne({ user: req.user._id })
             .populate('students', 'user level xpPoints streak stats')
