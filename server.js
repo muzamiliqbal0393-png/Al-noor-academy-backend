@@ -11,11 +11,15 @@ const studentRoutes = require("./routes/student");
 const parentRoutes = require("./routes/parent");
 const classesRoutes = require("./routes/classes");
 const adminRoutes = require("./routes/admin");
+const teacherApplyRoutes = require("./routes/teacherApply");
+
 const attendanceRoutes = require("./routes/attendance");
 const homeworkRoutes = require("./routes/homework");
 const messagesRoutes = require("./routes/messages");
 const paymentsRoutes = require("./routes/payments");
 const notificationsRoutes = require("./routes/notifications");
+const walletRoutes = require("./routes/wallet");
+const publicRoutes = require("./routes/public");
 
 // Create express app
 const server = express();
@@ -93,11 +97,15 @@ server.use("/api/student", studentRoutes);
 server.use("/api/parent", parentRoutes);
 server.use("/api/classes", classesRoutes);
 server.use("/api/admin", adminRoutes);
+server.use("/api/admin", teacherApplyRoutes);
+
 server.use("/api/attendance", attendanceRoutes);
 server.use("/api/homework", homeworkRoutes);
 server.use("/api/messages", messagesRoutes);
 server.use("/api/payments", paymentsRoutes);
 server.use("/api/notifications", notificationsRoutes);
+server.use("/api/wallet", walletRoutes);
+server.use("/api/public", publicRoutes);
 
 // ✅ Root Route
 server.get("/", (req, res) => {
