@@ -25,7 +25,7 @@ const publicRoutes = require("./routes/public");
 const server = express();
 
 // ==========================================
-//  1. GLOBAL CORE MIDDLEWARES (MUST BE FIRST)
+//  1. GLOBAL CORE MIDDLEWARES
 // ==========================================
 server.use(
   cors({
@@ -36,7 +36,7 @@ server.use(
   })
 );
 server.use(morgan("dev"));
-server.use(express.json()); // ⚡ FIX: Ab routes se pehle body parse hogi
+server.use(express.json());
 server.use(express.urlencoded({ extended: true }));
 
 // Static file serving
@@ -60,10 +60,8 @@ async function connectDB() {
 
   try {
     console.log("🔄 Connecting to MongoDB Atlas...");
-    await mongoose.connect(MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
+    // ⚡ FIX: Mongoose v7+ ke liye deprecated options hata diye hain
+    await mongoose.connect(MONGO_URI);
     isConnected = true;
     console.log("✅ Connected to MongoDB");
   } catch (err) {
@@ -83,7 +81,7 @@ server.use(async (req, res, next) => {
 });
 
 // ==========================================
-//  3. API ROUTES (NOW DATA WILL BE PARSED)
+//  3. API ROUTES
 // ==========================================
 server.use("/api/auth", authRoutes);
 server.use("/api/teacher", teacherRoutes);
@@ -108,7 +106,7 @@ server.get("/", (req, res) => {
 
 // Local Development Server Mode
 if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 5001; // Port 5001 as per your env
+  const PORT = process.env.PORT || 5001;
   server.listen(PORT, () => {
     console.log(`🚀 Local Server running on port ${PORT}`);
   });
