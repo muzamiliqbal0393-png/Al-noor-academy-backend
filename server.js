@@ -43,12 +43,17 @@ server.use(express.urlencoded({ extended: true }));
 server.use("/uploads", cors(), express.static("uploads"));
 
 // ==========================================
-//  2. DATABASE CONNECTION MANAGEMENT
+//  2. DATABASE & PRODUCTION ENV FALLBACKS
 // ==========================================
 mongoose.set('strictQuery', true);
 mongoose.set('bufferCommands', false);
 
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/al_noor_academy";
+// ⚡ FIX: Dashboard variables missing hone ki wajah se direct secure production injection
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://muzamiliqbal0393_db_user:Muzamil2233@cluster0.zerb0gq.mongodb.net/al_noor_academy?retryWrites=true&w=majority";
+
+if (!process.env.JWT_SECRET) process.env.JWT_SECRET = "alnoor_super_secret_jwt_key_2025";
+if (!process.env.JWT_EXPIRE) process.env.JWT_EXPIRE = "30d";
+if (!process.env.NODE_ENV) process.env.NODE_ENV = "production";
 
 let isConnected = false;
 
@@ -60,7 +65,6 @@ async function connectDB() {
 
   try {
     console.log("🔄 Connecting to MongoDB Atlas...");
-    // ⚡ FIX: Mongoose v7+ ke liye deprecated options hata diye hain
     await mongoose.connect(MONGO_URI);
     isConnected = true;
     console.log("✅ Connected to MongoDB");
@@ -88,8 +92,10 @@ server.use("/api/teacher", teacherRoutes);
 server.use("/api/student", studentRoutes);
 server.use("/api/parent", parentRoutes);
 server.use("/api/classes", classesRoutes);
+
+// ⚡ FIX: Teacher applications ke clash ko khatam karne ke liye distinct mount path diya hai
 server.use("/api/admin", adminRoutes);
-server.use("/api/admin", teacherApplyRoutes);
+server.use("/api/teacher-apply", teacherApplyRoutes);
 
 server.use("/api/attendance", attendanceRoutes);
 server.use("/api/homework", homeworkRoutes);
