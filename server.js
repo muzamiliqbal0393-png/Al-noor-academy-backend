@@ -2,7 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const morgan = require("morgan");
 const cors = require("cors");
-require("dotenv").config(); // Essential for Vercel to load env variables
+require("dotenv").config();
 
 // Correct Academy Routes
 const authRoutes = require("./routes/auth");
@@ -24,29 +24,46 @@ const publicRoutes = require("./routes/public");
 // Create express app
 const server = express();
 
-// ✅ MongoDB Connection Settings
+// ==========================================
+//  1. GLOBAL CORE MIDDLEWARES (MUST BE FIRST)
+// ==========================================
+server.use(
+  cors({
+    origin: "*",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+server.use(morgan("dev"));
+server.use(express.json()); // ⚡ FIX: Ab routes se pehle body parse hogi
+server.use(express.urlencoded({ extended: true }));
+
+// Static file serving
+server.use("/uploads", cors(), express.static("uploads"));
+
+// ==========================================
+//  2. DATABASE CONNECTION MANAGEMENT
+// ==========================================
 mongoose.set('strictQuery', true);
 mongoose.set('bufferCommands', false);
 
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/al_noor_academy"; 
+const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/al_noor_academy";
 
-// ⚡ FIX: Database Connection Cache (Serverless ke liye zaroori hai)
 let isConnected = false;
 
 async function connectDB() {
-  if (isConnected) {
-    return;
-  }
-
-  // Agar pehle se connecting state (2) mein ho toh wait karein
-  if (mongoose.connection.readyState === 1) {
+  if (isConnected || mongoose.connection.readyState === 1) {
     isConnected = true;
     return;
   }
 
   try {
     console.log("🔄 Connecting to MongoDB Atlas...");
-    await mongoose.connect(MONGO_URI);
+    await mongoose.connect(MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
     isConnected = true;
     console.log("✅ Connected to MongoDB");
   } catch (err) {
@@ -55,7 +72,7 @@ async function connectDB() {
   }
 }
 
-// ⚡ FIX MIDDLEWARE: Har incoming request par check karein ke DB connected hai ya nahi
+// DB connection check middleware
 server.use(async (req, res, next) => {
   try {
     await connectDB();
@@ -65,32 +82,9 @@ server.use(async (req, res, next) => {
   }
 });
 
-// Start server ONLY for Local Development mode
-if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 5000;
-  server.listen(PORT, () => {
-    console.log(`🚀 Local Server running on port ${PORT}`);
-  });
-}
-
-// ✅ CORS Configuration
-server.use(
-    cors({
-        origin: "*", 
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-    })
-);
-
-// ✅ Static file serving (uploads)
-server.use("/uploads", cors(), express.static("uploads"));
-
-// ✅ Middleware
-server.use(morgan("dev"));
-server.use(express.json());
-
-// ✅ API Routes (Online Academy)
+// ==========================================
+//  3. API ROUTES (NOW DATA WILL BE PARSED)
+// ==========================================
 server.use("/api/auth", authRoutes);
 server.use("/api/teacher", teacherRoutes);
 server.use("/api/student", studentRoutes);
@@ -107,22 +101,30 @@ server.use("/api/notifications", notificationsRoutes);
 server.use("/api/wallet", walletRoutes);
 server.use("/api/public", publicRoutes);
 
-// ✅ Root Route
+// Root Route
 server.get("/", (req, res) => {
-    res.send("✅ Al-Noor Quran Academy API is running successfully!");
+  res.send("✅ Al-Noor Quran Academy API is running successfully!");
 });
 
-// ❌ 404 Not Found
+// Local Development Server Mode
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 5001; // Port 5001 as per your env
+  server.listen(PORT, () => {
+    console.log(`🚀 Local Server running on port ${PORT}`);
+  });
+}
+
+// 404 Not Found
 server.use((req, res) => {
-    res.status(404).json({ msg: "❌ Not Found" });
+  res.status(404).json({ msg: "❌ Not Found" });
 });
 
-// ❌ Global Error Handler
+// Global Error Handler
 server.use((err, req, res, next) => {
-    console.error("❌ Server Error Detail:", err); 
-    res
-        .status(err.status || 500)
-        .json({ msg: err.message || "Internal Server Error" });
+  console.error("❌ Server Error Detail:", err);
+  res
+    .status(err.status || 500)
+    .json({ msg: err.message || "Internal Server Error" });
 });
 
-module.exports = server; // Required for Vercel Serverless Functions
+module.exports = server;
