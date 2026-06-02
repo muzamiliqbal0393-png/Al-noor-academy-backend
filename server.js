@@ -4,7 +4,7 @@ const morgan = require("morgan");
 const cors = require("cors");
 require("dotenv").config();
 
-// Correct Academy Routes
+// Routes
 const authRoutes = require("./routes/auth");
 const teacherRoutes = require("./routes/teacher");
 const studentRoutes = require("./routes/student");
@@ -12,7 +12,6 @@ const parentRoutes = require("./routes/parent");
 const classesRoutes = require("./routes/classes");
 const adminRoutes = require("./routes/admin");
 const teacherApplyRoutes = require("./routes/teacherApply");
-
 const attendanceRoutes = require("./routes/attendance");
 const homeworkRoutes = require("./routes/homework");
 const messagesRoutes = require("./routes/messages");
@@ -25,35 +24,50 @@ const publicRoutes = require("./routes/public");
 const server = express();
 
 // ==========================================
-//  1. GLOBAL CORE MIDDLEWARES
+//  1. MANUAL CORS HEADERS — MUST BE FIRST
+//  This guarantees CORS headers on ALL responses,
+//  including 500 errors where cors() might not run.
 // ==========================================
-server.use(
-  cors({
-    origin: "*",
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+server.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+  // Handle preflight requests immediately
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+  next();
+});
+
+// ==========================================
+//  2. OTHER MIDDLEWARES
+// ==========================================
+// NOTE: credentials:false because origin:"*" + credentials:true is forbidden by browsers
+server.use(cors({
+  origin: "*",
+  credentials: false,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+}));
+
 server.use(morgan("dev"));
-server.use(express.json());
-server.use(express.urlencoded({ extended: true }));
+server.use(express.json({ limit: "10mb" }));
+server.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Static file serving
-server.use("/uploads", cors(), express.static("uploads"));
+server.use("/uploads", express.static("uploads"));
 
 // ==========================================
-//  2. DATABASE & PRODUCTION ENV FALLBACKS
+//  3. DATABASE & ENV FALLBACKS
 // ==========================================
-mongoose.set('strictQuery', true);
-mongoose.set('bufferCommands', false);
+mongoose.set("strictQuery", true);
+mongoose.set("bufferCommands", false);
 
-// ⚡ FIX: Dashboard variables missing hone ki wajah se direct secure production injection
-const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://muzamiliqbal0393_db_user:Muzamil2233@cluster0.zerb0gq.mongodb.net/al_noor_academy?retryWrites=true&w=majority";
+const MONGO_URI = process.env.MONGO_URI ||
+  "mongodb+srv://muzamiliqbal0393_db_user:Muzamil2233@cluster0.zerb0gq.mongodb.net/al_noor_academy?retryWrites=true&w=majority";
 
 if (!process.env.JWT_SECRET) process.env.JWT_SECRET = "alnoor_super_secret_jwt_key_2025";
-if (!process.env.JWT_EXPIRE) process.env.JWT_EXPIRE = "30d";
-if (!process.env.NODE_ENV) process.env.NODE_ENV = "production";
+if (!process.env.JWT_EXPIRE)  process.env.JWT_EXPIRE  = "30d";
 
 let isConnected = false;
 
@@ -62,73 +76,79 @@ async function connectDB() {
     isConnected = true;
     return;
   }
-
   try {
     console.log("🔄 Connecting to MongoDB Atlas...");
-    await mongoose.connect(MONGO_URI);
+    await mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+    });
     isConnected = true;
     console.log("✅ Connected to MongoDB");
   } catch (err) {
-    console.error("❌ MongoDB connection error:", err);
+    isConnected = false;
+    console.error("❌ MongoDB connection error:", err.message);
     throw err;
   }
 }
 
-// DB connection check middleware
+// DB connection middleware — runs before every route
 server.use(async (req, res, next) => {
   try {
     await connectDB();
     next();
   } catch (error) {
-    res.status(500).json({ msg: "Database connection failed", error: error.message });
+    // CORS headers already set above, so this response will be readable by browser
+    return res.status(500).json({
+      success: false,
+      msg: "Database connection failed. Please try again.",
+      error: error.message,
+    });
   }
 });
 
 // ==========================================
-//  3. API ROUTES
+//  4. API ROUTES
 // ==========================================
-server.use("/api/auth", authRoutes);
-server.use("/api/teacher", teacherRoutes);
-server.use("/api/student", studentRoutes);
-server.use("/api/parent", parentRoutes);
-server.use("/api/classes", classesRoutes);
-
-// ⚡ FIX: Teacher applications ke clash ko khatam karne ke liye distinct mount path diya hai
-server.use("/api/admin", adminRoutes);
+server.use("/api/auth",          authRoutes);
+server.use("/api/teacher",       teacherRoutes);
+server.use("/api/student",       studentRoutes);
+server.use("/api/parent",        parentRoutes);
+server.use("/api/classes",       classesRoutes);
+server.use("/api/admin",         adminRoutes);
 server.use("/api/teacher-apply", teacherApplyRoutes);
-
-server.use("/api/attendance", attendanceRoutes);
-server.use("/api/homework", homeworkRoutes);
-server.use("/api/messages", messagesRoutes);
-server.use("/api/payments", paymentsRoutes);
+server.use("/api/attendance",    attendanceRoutes);
+server.use("/api/homework",      homeworkRoutes);
+server.use("/api/messages",      messagesRoutes);
+server.use("/api/payments",      paymentsRoutes);
 server.use("/api/notifications", notificationsRoutes);
-server.use("/api/wallet", walletRoutes);
-server.use("/api/public", publicRoutes);
+server.use("/api/wallet",        walletRoutes);
+server.use("/api/public",        publicRoutes);
 
-// Root Route
+// Root health check
 server.get("/", (req, res) => {
-  res.send("✅ Al-Noor Quran Academy API is running successfully!");
+  res.json({ success: true, message: "✅ Al-Noor Quran Academy API is running!" });
 });
 
-// Local Development Server Mode
+// Local dev mode
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 5001;
   server.listen(PORT, () => {
-    console.log(`🚀 Local Server running on port ${PORT}`);
+    console.log(`🚀 Local Server running on http://localhost:${PORT}`);
   });
 }
 
-// 404 Not Found
+// 404 Handler
 server.use((req, res) => {
-  res.status(404).json({ msg: "❌ Not Found" });
+  res.status(404).json({ success: false, msg: "❌ Route not found" });
 });
 
-// Global Error Handler
+// Global Error Handler — CORS headers already set above
 server.use((err, req, res, next) => {
-  console.error("❌ Server Error Detail:", err);
-  res
-    .status(err.status || 500)
-    .json({ msg: err.message || "Internal Server Error" });
+  console.error("❌ Server Error:", err.message);
+  res.status(err.status || 500).json({
+    success: false,
+    msg: err.message || "Internal Server Error",
+  });
 });
 
 module.exports = server;
