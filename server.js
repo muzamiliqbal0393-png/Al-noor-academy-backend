@@ -19,6 +19,7 @@ const paymentsRoutes = require("./routes/payments");
 const notificationsRoutes = require("./routes/notifications");
 const walletRoutes = require("./routes/wallet");
 const publicRoutes = require("./routes/public");
+const analyticsRoutes = require("./routes/analytics");
 
 // Create express app
 const server = express();
@@ -123,6 +124,7 @@ server.use("/api/payments",      paymentsRoutes);
 server.use("/api/notifications", notificationsRoutes);
 server.use("/api/wallet",        walletRoutes);
 server.use("/api/public",        publicRoutes);
+server.use("/api/analytics",     analyticsRoutes);
 
 // Root health check
 server.get("/", (req, res) => {
